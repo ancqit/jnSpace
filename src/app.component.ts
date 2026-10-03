@@ -28,9 +28,12 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
       </header>
 
       <main>
-        <p class="kicker">A walking song</p>
+        <p class="kicker">A Vedic chant</p>
         <h1 id="title">The calling of the ents</h1>
-        <p class="lede">The pledge is broken. The jungles were burnt. This is the call to the other ents.</p>
+        <p class="lede">
+          All the ents chant together. The aim of the chant is to wake the boss. The pledge is broken, and this is the
+          call to the other ents.
+        </p>
 
         <ul class="scope" aria-label="Scope of the chant">
           <li><span>Ents</span> The call to the other ents.</li>
@@ -53,6 +56,21 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
         </p>
         <p class="live-line"><span>{{ kicker }}</span> {{ line }}</p>
         <div class="meter" aria-hidden="true"><i [style.width.%]="meter"></i></div>
+
+        <aside class="register" [attr.data-registered]="registered && audio === 'playing' ? 'yes' : 'no'" [attr.data-hearing]="hearing ? 'yes' : 'no'">
+          <p class="kicker">The code</p>
+          <p>{{ codeNote }}</p>
+          <ol class="marks" aria-hidden="true">
+            @for (mark of marks; track mark) {
+              <li [class.on]="mark <= codeMarks && audio === 'playing'"></li>
+            }
+          </ol>
+          @if (audio === 'playing' && registered) {
+            <p class="meaning">
+              the very people no one imagines anything of, who do the things no one can imagine.
+            </p>
+          }
+        </aside>
 
         <div class="chant-frame">
           <canvas #chantCanvas role="img" [attr.aria-label]="kicker + '. ' + line"></canvas>
@@ -117,9 +135,13 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected walking = true;
   protected audio: ChantAudio = 'pending';
   protected canSound = true;
+  protected readonly marks = [1, 2, 3, 4];
   protected line = HYMN[0].text;
   protected kicker = HYMN[0].kicker;
   protected meter = 0;
+  protected codeMarks = 0;
+  protected hearing = false;
+  protected registered = false;
 
   private engine: EntChant | null = null;
 
@@ -160,6 +182,15 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     return 'The chant is walking.';
   }
 
+  protected get codeNote(): string {
+    if (this.audio !== 'playing') {
+      return 'An ent is listening for a short code in the chant. It registers only while the song is sounding.';
+    }
+    if (this.registered) return 'An ent heard the code and registered it.';
+    if (this.hearing) return 'An ent hears the code.';
+    return 'The ents are chanting. The code returns in the slow steps.';
+  }
+
   protected onPrimary(): void {
     if (!this.engine) return;
     if (this.showPause) this.engine.pause();
@@ -177,5 +208,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.line = status.line;
     this.kicker = status.kicker;
     this.meter = Math.round(status.meter * 100);
+    this.codeMarks = status.codeMarks;
+    this.hearing = status.hearing;
+    this.registered = status.registered;
   }
 }

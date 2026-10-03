@@ -241,6 +241,38 @@ h1 {
   background: var(--forest);
 }
 
+.register {
+  max-width: 42rem;
+  margin-top: 0.9rem;
+  padding: 0.8rem 0.95rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  box-shadow: var(--shadow);
+}
+
+.register p { margin: 0.35rem 0 0; color: var(--ink-soft); }
+
+.marks {
+  display: flex;
+  gap: 0.45rem;
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+}
+
+.marks li {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  border: 1px solid var(--forest);
+  background: transparent;
+}
+
+.marks li.on { background: var(--gold); }
+
+.meaning { color: var(--forest); font-family: var(--font-display); }
+
 .chant-frame {
   margin-top: 0.9rem;
   border: 1px solid var(--line);
