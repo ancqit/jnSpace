@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="jEarth">
+  <rect width="64" height="64" rx="18" fill="#194b31"/>
+  <circle cx="32" cy="32" r="16" fill="#f3d782"/>
+  <path d="M22 34c4-8 16-10 22-2" fill="none" stroke="#194b31" stroke-width="3" stroke-linecap="round"/>
+</svg>
