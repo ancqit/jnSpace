@@ -23,7 +23,7 @@ export const HYMN: readonly HymnLine[] = [
   { role: 'call', kicker: 'THE CARRIER', text: 'A satellite carries this word over the scar.' },
   { role: 'call', kicker: 'THE CARRIER', text: 'It must reach the host. It must reach the boss.' },
   { role: 'answer', kicker: 'THE ONE WHO SLEPT', text: 'One who slept a long age takes the call.' },
-  { role: 'answer', kicker: 'THE ONE WHO SLEPT', text: 'Jiraiya, fuji kunal, and rarrow take the slogan.' },
+  { role: 'answer', kicker: 'THE ONE WHO SLEPT', text: 'Fuji kunal and rarrow take the slogan.' },
   { role: 'refrain', kicker: 'THE SLOGAN', text: 'The wind is in the west.' },
   { role: 'refrain', kicker: 'THE SLOGAN', text: 'My land is best.' },
 ];
@@ -183,6 +183,8 @@ export class EntChant {
   private motes: Mote[] = [];
   private resizeObserver: ResizeObserver | null = null;
   private lastEmitKey = '';
+  private spokenIndex = -1;
+  private rough: Float32Array<ArrayBuffer> | null = null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -213,7 +215,9 @@ export class EntChant {
     this.paused = true;
     this.lastNow = performance.now();
     this.scoreOn = false;
+    this.spokenIndex = -1;
     this.stopScheduler();
+    window.speechSynthesis?.cancel();
     this.fadeAndSuspend();
     this.emit(true);
   }
@@ -241,6 +245,7 @@ export class EntChant {
         // Already stopped.
       }
     }
+    window.speechSynthesis?.cancel();
     void this.audio?.close();
   }
 
@@ -253,6 +258,7 @@ export class EntChant {
       return;
     }
     const audio = this.audio;
+    window.speechSynthesis?.resume();
     if (!audio.onstatechange) {
       audio.onstatechange = () => {
         if (this.destroyed) return;
@@ -289,6 +295,8 @@ export class EntChant {
     this.fadeIn();
     const visualNow = this.elapsedMs / 1000;
     if (this.nextNoteVisual < visualNow) this.nextNoteVisual = visualNow;
+    this.spokenIndex = -1;
+    this.speakCurrent();
     this.schedule();
   }
 
@@ -298,14 +306,21 @@ export class EntChant {
     this.graphReady = true;
     const master = audio.createGain();
     master.gain.value = 0.0001;
+    const compressor = audio.createDynamicsCompressor();
+    compressor.threshold.value = -14;
+    compressor.knee.value = 8;
+    compressor.ratio.value = 2.4;
+    compressor.attack.value = 0.004;
+    compressor.release.value = 0.16;
     const analyser = audio.createAnalyser();
     analyser.fftSize = 1024;
     analyser.smoothingTimeConstant = 0.82;
     const droneBus = audio.createBiquadFilter();
     droneBus.type = 'lowpass';
-    droneBus.frequency.value = 320;
+    droneBus.frequency.value = 420;
     droneBus.connect(master);
-    master.connect(analyser);
+    master.connect(compressor);
+    compressor.connect(analyser);
     analyser.connect(audio.destination);
     this.master = master;
     this.analyser = analyser;
@@ -320,9 +335,9 @@ export class EntChant {
     lfo.start();
     this.nodes.push(lfo);
 
-    this.drone(droneBus, 73.42, 'sine', 0.14, 0);
-    this.drone(droneBus, 73.42, 'triangle', 0.045, 7);
-    this.drone(droneBus, 110, 'sine', 0.035, -5);
+    this.drone(droneBus, 73.42, 'sawtooth', 0.22, -4);
+    this.drone(droneBus, 73.42, 'triangle', 0.16, 6);
+    this.drone(droneBus, 110, 'sine', 0.08, -3);
   }
 
   private drone(
@@ -352,7 +367,7 @@ export class EntChant {
     const gain = this.master.gain;
     gain.cancelScheduledValues(now);
     gain.setValueAtTime(Math.max(0.0001, gain.value), now);
-    gain.linearRampToValueAtTime(0.7, now + 0.45);
+    gain.linearRampToValueAtTime(1, now + 0.35);
   }
 
   private fadeAndSuspend(): void {
@@ -401,36 +416,106 @@ export class EntChant {
     const motifs = MOTIFS[line.role];
     const motif = motifs[lineIndex % motifs.length];
     const freq = DORIAN[motif[beat] ?? 0];
-    const peak = line.role === 'refrain' ? 0.2 : 0.14;
-    this.pluck(when, freq, peak);
-    if (line.role === 'refrain') this.pluck(when, freq / 2, 0.07);
-    if (beat % 2 === 0) this.knock(when, beat === 0 ? 0.16 : 0.09);
+    const peak = line.role === 'refrain' ? 0.92 : 0.78;
+    this.sing(when, freq, peak);
+    if (beat % 2 === 0) this.knock(when, beat === 0 ? 0.28 : 0.16);
   }
 
-  private pluck(when: number, freq: number, peak: number): void {
+  private roughCurve(): Float32Array<ArrayBuffer> {
+    if (this.rough) return this.rough;
+    const samples = 512;
+    const curve = new Float32Array(new ArrayBuffer(samples * 4));
+    for (let i = 0; i < samples; i += 1) {
+      const x = (i / (samples - 1)) * 2 - 1;
+      curve[i] = Math.tanh(x * 4.2);
+    }
+    this.rough = curve;
+    return curve;
+  }
+
+  private sing(when: number, freq: number, peak: number): void {
     if (!this.audio || !this.master) return;
-    const start = Math.max(when, this.audio.currentTime);
-    const osc = this.audio.createOscillator();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(freq, start);
-    const filter = this.audio.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(1600, start);
-    filter.frequency.exponentialRampToValueAtTime(420, start + 0.45);
-    const gain = this.audio.createGain();
+    const audio = this.audio;
+    const start = Math.max(when, audio.currentTime);
+    const chest = Math.max(92, freq * 0.5);
+    const hold = Math.min(1.25, QUARTER * 0.94);
+    const shaper = audio.createWaveShaper();
+    shaper.curve = this.roughCurve();
+    shaper.oversample = '2x';
+    const formant = audio.createBiquadFilter();
+    formant.type = 'bandpass';
+    formant.frequency.setValueAtTime(520, start);
+    formant.frequency.linearRampToValueAtTime(680, start + hold * 0.45);
+    formant.Q.value = 3.2;
+    const brightness = audio.createBiquadFilter();
+    brightness.type = 'bandpass';
+    brightness.frequency.value = 1120;
+    brightness.Q.value = 5.5;
+    const gain = audio.createGain();
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), start + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.05);
-    osc.connect(filter);
-    filter.connect(gain);
+    gain.gain.exponentialRampToValueAtTime(peak, start + 0.11);
+    gain.gain.setValueAtTime(peak * 0.9, start + hold * 0.62);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + hold);
+
+    const voices = [
+      { detune: -8, mix: 0.72 },
+      { detune: 11, mix: 0.48 },
+    ];
+    const oscillators: OscillatorNode[] = [];
+    for (const voice of voices) {
+      const osc = audio.createOscillator();
+      osc.type = 'sawtooth';
+      osc.detune.setValueAtTime(voice.detune, start);
+      osc.frequency.setValueAtTime(chest * 0.9, start);
+      osc.frequency.exponentialRampToValueAtTime(chest, start + 0.14);
+      const mix = audio.createGain();
+      mix.gain.value = voice.mix;
+      osc.connect(mix);
+      mix.connect(shaper);
+      osc.start(start);
+      osc.stop(start + hold + 0.05);
+      oscillators.push(osc);
+    }
+    shaper.connect(formant);
+    shaper.connect(brightness);
+    formant.connect(gain);
+    const air = audio.createGain();
+    air.gain.value = 0.35;
+    brightness.connect(air);
+    air.connect(gain);
     gain.connect(this.master);
-    osc.start(start);
-    osc.stop(start + 1.15);
-    osc.onended = () => {
-      osc.disconnect();
-      filter.disconnect();
+    oscillators[0].onended = () => {
+      for (const osc of oscillators) osc.disconnect();
+      shaper.disconnect();
+      formant.disconnect();
+      brightness.disconnect();
+      air.disconnect();
       gain.disconnect();
     };
+  }
+
+  private speakCurrent(): void {
+    if (this.paused || this.destroyed || this.audio?.state !== 'running') return;
+    const index = this.currentIndex();
+    if (index === this.spokenIndex) return;
+    this.spokenIndex = index;
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    const line = HYMN[index];
+    const utter = new SpeechSynthesisUtterance(line.text);
+    utter.volume = 1;
+    utter.rate = 0.66;
+    utter.pitch = 0.42;
+    utter.lang = 'en-GB';
+    const voices = synth.getVoices();
+    const voice =
+      voices.find((item) => /en/i.test(item.lang) && /male|daniel|rishi|fred|david|george|alex/i.test(item.name)) ??
+      voices.find((item) => /^en/i.test(item.lang)) ??
+      null;
+    if (voice) utter.voice = voice;
+    synth.cancel();
+    synth.resume();
+    synth.speak(utter);
   }
 
   private knock(when: number, peak: number): void {
@@ -458,6 +543,7 @@ export class EntChant {
     const dt = Math.min(48, Math.max(0, now - this.lastNow));
     this.lastNow = now;
     if (!this.paused) this.elapsedMs += dt;
+    this.speakCurrent();
     this.sampleEnergy();
     this.updateMotes(this.paused || this.reduce ? 0 : dt);
     this.draw();
@@ -849,8 +935,8 @@ export class EntChant {
     ctx.beginPath();
     ctx.ellipse(w / 2, ground + 4, w * 0.3, 9 + Math.sin(motion) * 1.5, 0, Math.PI, 0);
     ctx.stroke();
-    setLetterSpacing(ctx, '0.14em');
-    ctx.font = '500 9px "DM Mono", ui-monospace, monospace';
+    setLetterSpacing(ctx, '0.12em');
+    ctx.font = '700 9px "DM Sans", "Segoe UI", sans-serif';
     ctx.fillStyle = '#8eaa9c';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
@@ -869,7 +955,7 @@ export class EntChant {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     setLetterSpacing(ctx, '0.12em');
-    ctx.font = '500 8px "DM Mono", ui-monospace, monospace';
+    ctx.font = '700 8px "DM Sans", "Segoe UI", sans-serif';
     for (const mark of marks) {
       ctx.strokeStyle = 'rgba(214, 176, 122, 0.7)';
       ctx.fillStyle = 'rgba(214, 176, 122, 0.85)';
@@ -949,14 +1035,14 @@ export class EntChant {
     const size = line.role === 'refrain' ? Math.min(52, w * 0.048) : Math.min(34, w * 0.034);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    setLetterSpacing(ctx, '0.22em');
-    ctx.font = '500 11px "DM Mono", ui-monospace, monospace';
+    setLetterSpacing(ctx, '0.12em');
+    ctx.font = '700 11px "DM Sans", "Segoe UI", sans-serif';
     ctx.fillStyle = '#d8995f';
     const kickerY = h * 0.2;
     ctx.fillText(line.kicker, w / 2, kickerY);
     setLetterSpacing(ctx, '0px');
 
-    ctx.font = `${line.role === 'refrain' ? 'italic ' : ''}500 ${size}px "Playfair Display", Georgia, serif`;
+    ctx.font = `${line.role === 'refrain' ? 'italic ' : ''}500 ${size}px Georgia, "Times New Roman", serif`;
     const lines = wrapText(ctx, line.text, Math.min(780, w * 0.8));
     const lineHeight = size * 1.28;
     const blockH = lines.length * lineHeight;
