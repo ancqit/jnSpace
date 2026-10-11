@@ -13,7 +13,7 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
           <img src="assets/jearth-logo.svg" width="34" height="34" alt="" />
           <span>
             <strong>jEarth</strong>
-            <small>The calling</small>
+            <small>The rite</small>
           </span>
         </a>
         <button
@@ -28,18 +28,18 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
       </header>
 
       <main>
-        <p class="kicker">A Vedic chant</p>
-        <h1 id="title">The calling of the ents</h1>
+        <p class="kicker">An entish song</p>
+        <h1 id="title">The rite that saves the jungle</h1>
         <p class="lede">
-          All the ents chant together. The aim of the chant is to wake the boss. The pledge is broken, and this is the
-          call to the other ents.
+          The song is slow, because an entish song does not hurry. The ents name the burnt canopy, gather root by root,
+          raise their arms, and pour the water kept under the stone. The leaves open. The jungle stands.
         </p>
 
-        <ul class="scope" aria-label="Scope of the chant">
-          <li><span>Ents</span> The call to the other ents.</li>
-          <li><span>Pledge</span> The pledge to the planet is broken.</li>
-          <li><span>Carrier</span> A satellite carries the word to the host and the boss.</li>
-          <li><span>Locality</span> Shared with the other animals.</li>
+        <ul class="scope" aria-label="The rite">
+          <li><span>Scar</span> The canopy was burnt. The ents name it.</li>
+          <li><span>Raising</span> Each arm lifts, and the rite waits for the last.</li>
+          <li><span>Pouring</span> Deep water climbs the bark into the scar.</li>
+          <li><span>Saving</span> The leaves return, and the ents remain to keep them.</li>
         </ul>
 
         <div class="transport">
@@ -54,8 +54,11 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
         <p class="transport-note" [attr.data-audio]="audio" [attr.data-walking]="walking ? 'yes' : 'no'" aria-live="polite">
           {{ note }}
         </p>
-        <p class="live-line"><span>{{ kicker }}</span> {{ line }}</p>
+        <p class="live-line"><span>{{ kicker }}</span> {{ sung }}</p>
+        <p class="gloss">{{ line }}</p>
         <div class="meter" aria-hidden="true"><i [style.width.%]="meter"></i></div>
+        <p class="grove-note"><span>The jungle</span> {{ groveLabel }}</p>
+        <div class="meter grove" aria-hidden="true"><i [style.width.%]="grove"></i></div>
 
         <aside class="register" [attr.data-registered]="registered && audio === 'playing' ? 'yes' : 'no'" [attr.data-hearing]="hearing ? 'yes' : 'no'">
           <p class="kicker">The code</p>
@@ -73,10 +76,18 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
         </aside>
 
         <div class="chant-frame">
-          <canvas #chantCanvas role="img" [attr.aria-label]="kicker + '. ' + line"></canvas>
+          <canvas #chantCanvas role="img" [attr.aria-label]="kicker + '. ' + sung + '. ' + line"></canvas>
         </div>
 
         <section class="plain" id="junction" aria-label="What this call means">
+          <article class="wide">
+            <h2>The rite</h2>
+            <p>
+              The ents stand in the scar and do the rite together. They do not move as one hurry. One arm rises, then
+              the next, until the last is high. Water comes up through them. A young tree stands where the fire was,
+              the canopy closes, and the paw, the wing, the hoof, and the root take their places again.
+            </p>
+          </article>
           <article class="wide">
             <h2>The name</h2>
             <p>
@@ -95,8 +106,8 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
           <article>
             <h2>The call</h2>
             <p>
-              The jungles were burnt in anger. The anger is Saruman's, the will that fells the green. This page calls
-              the other ents, so they hear what it is to be an ent: to stay, to keep a place, and to answer.
+              The jungles were burnt in anger. The anger is Saruman's, the will that fells the green. The rite is the
+              answer: the ents stay, keep the place, and sing the canopy back.
             </p>
           </article>
           <article class="wide">
@@ -107,10 +118,14 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
             </p>
           </article>
           <details class="words">
-            <summary>Read the hymn</summary>
+            <summary>Read the song</summary>
             <ol>
               @for (verse of hymn; track $index) {
-                <li [class]="'role-' + verse.role"><span>{{ verse.kicker }}</span> {{ verse.text }}</li>
+                <li [class]="'role-' + verse.role">
+                  <span>{{ verse.kicker }}</span>
+                  <em>{{ verse.sung }}</em>
+                  {{ verse.text }}
+                </li>
               }
             </ol>
           </details>
@@ -137,7 +152,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected canSound = true;
   protected readonly marks = [1, 2, 3, 4];
   protected line = HYMN[0].text;
+  protected sung = HYMN[0].sung;
   protected kicker = HYMN[0].kicker;
+  protected grove = 0;
   protected meter = 0;
   protected codeMarks = 0;
   protected hearing = false;
@@ -173,22 +190,30 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   protected get note(): string {
-    if (!this.walking) return 'The chant is paused. Press play to walk it again.';
-    if (!this.canSound) return 'The chant is walking on the canvas. This browser cannot sound the song.';
-    if (this.audio === 'playing') return 'The chant is walking, and the song is sounding.';
+    if (!this.walking) return 'The rite is paused. Press play to walk it again.';
+    if (!this.canSound) return 'The rite is walking on the canvas. This browser cannot sound the song.';
+    if (this.audio === 'playing') return 'The rite is walking, and the entish song is sounding.';
     if (this.audio === 'blocked') {
-      return 'The chant is walking on the canvas. This browser held the song back. Press play and it starts for real.';
+      return 'The rite is walking on the canvas. This browser held the song back. Press play and it starts for real.';
     }
-    return 'The chant is walking.';
+    return 'The rite is walking.';
+  }
+
+  protected get groveLabel(): string {
+    if (!this.walking) return 'The rite is paused.';
+    if (this.grove >= 92) return 'The jungle stands. The ents keep it.';
+    if (this.grove >= 45) return 'The deep water is entering the scar.';
+    if (this.grove >= 8) return 'The arms are rising. The green is beginning.';
+    return 'The jungle is burnt. The ents begin the rite.';
   }
 
   protected get codeNote(): string {
     if (this.audio !== 'playing') {
-      return 'An ent is listening for a short code in the chant. It registers only while the song is sounding.';
+      return 'An ent is listening for the closing tones. They mark the jungle saved only while the song is sounding.';
     }
-    if (this.registered) return 'An ent heard the code and registered it.';
-    if (this.hearing) return 'An ent hears the code.';
-    return 'The ents are chanting. The code returns in the slow steps.';
+    if (this.registered) return 'An ent heard the closing tones and marked the jungle saved.';
+    if (this.hearing) return 'An ent hears the closing tones.';
+    return 'The ents are singing. The closing tones come when the jungle stands.';
   }
 
   protected onPrimary(): void {
@@ -206,7 +231,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.audio = status.audio;
     this.canSound = status.canSound;
     this.line = status.line;
+    this.sung = status.sung;
     this.kicker = status.kicker;
+    this.grove = Math.round(status.heal * 100);
     this.meter = Math.round(status.meter * 100);
     this.codeMarks = status.codeMarks;
     this.hearing = status.hearing;
