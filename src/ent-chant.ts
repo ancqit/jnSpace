@@ -470,7 +470,7 @@ export class EntChant {
 
   private soundAt(when: number, visualTime: number): void {
     if (!this.audio || !this.master) return;
-    const lineIndex = Math.floor(visualTime / LINE_SECONDS) % HYMN.length;
+    const lineIndex = this.lineIndexAt(visualTime);
     const beat = Math.floor((visualTime % LINE_SECONDS) / QUARTER + 0.001) % LINE_BEATS;
     const line = HYMN[lineIndex];
     const motifs = MOTIFS[line.role];
@@ -738,8 +738,16 @@ export class EntChant {
     this.motes = this.motes.filter((mote) => mote.life > 0);
   }
 
+  private lineIndexAt(seconds: number): number {
+    const raw = Math.floor(seconds / LINE_SECONDS);
+    const savedAt = HYMN.findIndex((line) => line.phase === 'saved');
+    if (raw < HYMN.length) return Math.max(0, raw);
+    const keep = HYMN.length - savedAt;
+    return savedAt + ((raw - savedAt) % keep);
+  }
+
   private currentIndex(): number {
-    return Math.floor(this.elapsedMs / 1000 / LINE_SECONDS) % HYMN.length;
+    return this.lineIndexAt(this.elapsedMs / 1000);
   }
 
   private currentLine(): HymnLine {
@@ -838,9 +846,9 @@ export class EntChant {
     this.drawRitualRing(ctx, w, ground, line.phase, progress, heal);
     this.drawHeart(ctx, w / 2, ground, heal, motion, this.energy);
     this.drawMotes(ctx);
-    this.drawGround(ctx, w, h, ground, motion, heal);
+    this.drawGround(ctx, w, h, ground, motion, heal, line.phase);
     this.drawLocality(ctx, w, ground);
-    this.drawHymn(ctx, w, h, line, this.reduce ? 1 : Math.min(1, progress / 0.4));
+    this.drawHymn(ctx, w, h, line, this.reduce ? 1 : Math.min(1, 0.72 + progress / 0.2));
     this.drawProgress(ctx, w, h, this.currentIndex(), progress);
   }
 
@@ -1051,8 +1059,8 @@ export class EntChant {
     _ground: number,
   ): { x: number; y: number } {
     const u = this.reduce ? 0.62 : (motion * 0.025) % 1;
-    const x = w * (0.12 + 0.76 * u);
-    const y = 48 + Math.sin(u * Math.PI) * 28;
+    const x = w * (0.08 + 0.84 * u);
+    const y = 22 + Math.sin(u * Math.PI) * 6;
     ctx.save();
     ctx.translate(x, y);
     ctx.strokeStyle = carrying ? '#f0c48a' : '#d5e0d2';
@@ -1295,6 +1303,7 @@ export class EntChant {
     ground: number,
     motion: number,
     heal: number,
+    phase: RitualPhase,
   ): void {
     ctx.fillStyle = mixHex('#1a1410', '#0b1914', heal);
     ctx.fillRect(0, ground, w, h - ground);
@@ -1317,13 +1326,21 @@ export class EntChant {
     ctx.beginPath();
     ctx.ellipse(w / 2, ground + 4, w * 0.3, 9 + Math.sin(motion) * 1.5, 0, Math.PI, 0);
     ctx.stroke();
-    const label = heal > 0.92 ? 'THE JUNGLE STANDS' : heal > 0.4 ? 'THE RETURNING' : 'THE SCAR';
+    const label =
+      phase === 'saved' || heal > 0.92
+        ? 'THE JUNGLE STANDS'
+        : phase === 'pour' || phase === 'unfurl' || heal > 0.45
+          ? 'THE RETURNING'
+          : phase === 'raise'
+            ? 'THE RAISING'
+            : 'THE SCAR';
+    const labelY = phase === 'pour' || phase === 'unfurl' || phase === 'saved' ? ground - 10 : ground - 118;
     setLetterSpacing(ctx, '0.12em');
     ctx.font = '700 9px "DM Sans", "Segoe UI", sans-serif';
-    ctx.fillStyle = heal > 0.92 ? '#d7e7c8' : '#8eaa9c';
+    ctx.fillStyle = heal > 0.92 ? '#d7e7c8' : '#cbbfa8';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText(label, w / 2, ground - 8);
+    ctx.fillText(label, w / 2, labelY);
     ctx.fillText('THE DEEP MEMORY', w / 2, ground + 36);
     setLetterSpacing(ctx, '0px');
   }
@@ -1415,7 +1432,9 @@ export class EntChant {
     ctx.fillStyle = veil;
     ctx.fillRect(0, h * 0.08, w, h * 0.42);
 
-    const size = line.role === 'refrain' ? Math.min(46, w * 0.044) : Math.min(32, w * 0.032);
+    const size = line.role === 'refrain'
+      ? Math.min(46, Math.max(22, w * 0.044))
+      : Math.min(32, Math.max(20, w * 0.034));
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     setLetterSpacing(ctx, '0.14em');
@@ -1432,9 +1451,7 @@ export class EntChant {
     const top = kickerY + 26;
 
     ctx.save();
-    ctx.beginPath();
-    ctx.rect(w * 0.04, top - lineHeight * 0.7, w * 0.92 * Math.max(0.02, reveal), blockH + lineHeight);
-    ctx.clip();
+    ctx.globalAlpha = Math.max(0.2, reveal);
     lines.forEach((part, index) => {
       const y = top + index * lineHeight;
       ctx.fillStyle = line.role === 'refrain' ? 'rgba(240, 196, 138, 0.35)' : 'rgba(8, 16, 13, 0.65)';
@@ -1454,7 +1471,7 @@ export class EntChant {
     ctx.stroke();
 
     setLetterSpacing(ctx, '0px');
-    const glossSize = Math.min(15, w * 0.016);
+    const glossSize = Math.max(12, Math.min(16, w * 0.02));
     ctx.font = `400 ${glossSize}px Georgia, "Times New Roman", serif`;
     ctx.fillStyle = 'rgba(226, 232, 220, 0.82)';
     const gloss = wrapText(ctx, line.text, Math.min(640, w * 0.7));
