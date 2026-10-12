@@ -1,6 +1,8 @@
 // Original entish rite. The canvas clock is the rite.
 // Sound follows that clock only while AudioContext is actually running.
-// The song is slow on purpose: a thing is named, then the ents move, then the jungle answers.
+// GSAP eases the daily chores. The rite clock seeks that timeline, so the song and the work stay together.
+
+import gsap from 'gsap';
 
 export type HymnRole = 'call' | 'refrain' | 'answer';
 
@@ -20,23 +22,23 @@ export const HYMN: readonly HymnLine[] = [
   {
     role: 'call',
     phase: 'scar',
-    kicker: 'THE SCAR',
-    sung: 'Roon thal em bar. Ash of canopy.',
-    text: 'We name the scar where the canopy burned, and we do not hurry.',
+    kicker: 'THE SAINTS',
+    sung: 'Roon thal em bar. The old saints.',
+    text: 'The old ents are saints. The fire is their first daily chore.',
   },
   {
     role: 'call',
     phase: 'gather',
-    kicker: 'THE GATHERING',
-    sung: 'Bora nal. Root by root, we gather.',
-    text: 'The ents who stayed come into the circle.',
+    kicker: 'THE FIRE',
+    sung: 'Bora nal. Tend the hearth.',
+    text: 'They keep the fire. It is the work of the day.',
   },
   {
     role: 'call',
     phase: 'raise',
-    kicker: 'THE RAISING',
-    sung: 'Thal em bruun. The old arms rise.',
-    text: 'The rite waits until the last arm is high.',
+    kicker: 'THE WATER',
+    sung: 'Nal eth ruun. Draw the water.',
+    text: 'Water is the next chore. They pour it for the roots.',
   },
   {
     role: 'refrain',
@@ -49,29 +51,29 @@ export const HYMN: readonly HymnLine[] = [
     role: 'call',
     phase: 'pour',
     kicker: 'THE POURING',
-    sung: 'Nal eth ruun. Stone kept water, rise.',
-    text: 'Deep water climbs the bark and fills the burnt ground.',
+    sung: 'Nal eth ruun. Pour it out.',
+    text: 'The pouring is daily. The bowl and the roots are filled.',
   },
   {
     role: 'call',
     phase: 'unfurl',
-    kicker: 'THE UNFURLING',
-    sung: 'El bar oon. The years open green.',
-    text: 'Year by year the leaves open, and the canopy returns.',
+    kicker: 'THE LEAVES',
+    sung: 'El bar oon. Open the leaves.',
+    text: 'Opening the leaves is a chore, the same as the fire.',
   },
   {
     role: 'answer',
     phase: 'saved',
-    kicker: 'THE SAVING',
+    kicker: 'THE PLACES',
     sung: 'Roon el bar. Paw, wing, hoof, and root.',
-    text: 'The animals take their places in the standing green.',
+    text: 'The other items are the places of the animals. They set them each day.',
   },
   {
     role: 'refrain',
     phase: 'saved',
     kicker: 'THE KEEPING',
-    sung: 'Bora nal. We remain and keep.',
-    text: 'Remaining is how the jungle stays saved.',
+    sung: 'Bora nal. The chores are kept.',
+    text: 'The fire still burns. The saints remain, and the jungle stands.',
   },
 ];
 
@@ -252,6 +254,8 @@ export class EntChant {
   private lastEmitKey = '';
   private spokenIndex = -1;
   private heardCode = false;
+  private readonly pose = { fire: 0.9, water: 0, leaves: 0, places: 0.15, arm: 0.22, lean: 0.2 };
+  private chores: gsap.core.Timeline | null = null;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -314,6 +318,7 @@ export class EntChant {
       }
     }
     window.speechSynthesis?.cancel();
+    this.chores?.kill();
     void this.audio?.close();
   }
 
@@ -607,6 +612,7 @@ export class EntChant {
     const dt = Math.min(48, Math.max(0, now - this.lastNow));
     this.lastNow = now;
     if (!this.paused) this.elapsedMs += dt;
+    this.syncChores();
     this.speakCurrent();
     this.sampleEnergy();
     this.updateMotes(this.paused || this.reduce ? 0 : dt);
@@ -646,67 +652,21 @@ export class EntChant {
     return p * p * (3 - 2 * p);
   }
 
-  private armFor(phase: RitualPhase, progress: number, index: number): number {
-    const ease = this.eased(progress, index);
-    switch (phase) {
-      case 'scar':
-        return 0.06 + ease * 0.04;
-      case 'gather':
-        return 0.12 + ease * 0.16;
-      case 'raise':
-        return 0.28 + ease * 0.72;
-      case 'pour':
-        return 1;
-      case 'unfurl':
-        return 1 - ease * 0.22;
-      case 'saved':
-        return 0.62;
-    }
-  }
-
-  private leanFor(phase: RitualPhase, progress: number, index: number): number {
-    const ease = this.eased(progress, index);
-    switch (phase) {
-      case 'gather':
-        return ease;
-      case 'raise':
-        return 1;
-      case 'pour':
-        return 0.45;
-      case 'unfurl':
-        return 0.16;
-      default:
-        return 0;
-    }
-  }
-
   private updateMotes(dt: number): void {
-    const line = this.currentLine();
     const heal = this.healAmount();
-    const phase = line.phase;
     if (dt > 0 && this.cssW > 2) {
       const ground = this.cssH * 0.8;
-      if (heal < 0.92 && Math.random() < (dt / 70) * (1 - heal * 0.85)) {
+      if (this.pose.fire > 0.45 && Math.random() < dt / 80) {
         this.motes.push({
-          x: this.cssW / 2 + (Math.random() - 0.5) * 18,
-          y: ground - 24,
-          vx: (Math.random() - 0.5) * 14,
-          vy: -18 - Math.random() * 36,
+          x: this.cssW / 2 + (Math.random() - 0.5) * 16,
+          y: ground - 18,
+          vx: (Math.random() - 0.5) * 10,
+          vy: -16 - Math.random() * 28,
           life: 1,
           kind: 'ember',
         });
       }
-      if ((phase === 'scar' || phase === 'gather') && heal < 0.55 && Math.random() < dt / 40) {
-        this.motes.push({
-          x: Math.random() * this.cssW,
-          y: this.cssH * (0.18 + Math.random() * 0.4),
-          vx: -8 - Math.random() * 16,
-          vy: 6 + Math.random() * 12,
-          life: 1,
-          kind: 'ash',
-        });
-      }
-      if ((phase === 'pour' || phase === 'unfurl') && Math.random() < dt / 26) {
+      if (this.pose.water > 0.45 && Math.random() < dt / 26) {
         this.motes.push({
           x: this.cssW * (0.28 + Math.random() * 0.44),
           y: ground - 70 - Math.random() * 50,
@@ -716,7 +676,7 @@ export class EntChant {
           kind: 'drop',
         });
       }
-      if (heal > 0.32 && Math.random() < (dt / 46) * heal) {
+      if (this.pose.leaves > 0.35 && Math.random() < dt / 42) {
         this.motes.push({
           x: Math.random() * this.cssW,
           y: ground - 16 - Math.random() * this.cssH * 0.32 * heal,
@@ -739,11 +699,39 @@ export class EntChant {
   }
 
   private lineIndexAt(seconds: number): number {
+    const length = HYMN.length;
     const raw = Math.floor(seconds / LINE_SECONDS);
-    const savedAt = HYMN.findIndex((line) => line.phase === 'saved');
-    if (raw < HYMN.length) return Math.max(0, raw);
-    const keep = HYMN.length - savedAt;
-    return savedAt + ((raw - savedAt) % keep);
+    return ((raw % length) + length) % length;
+  }
+
+  private syncChores(): void {
+    if (!this.chores) this.chores = this.buildChores();
+    const duration = this.chores.duration();
+    if (duration <= 0) return;
+    this.chores.time((this.elapsedMs / 1000) % duration);
+  }
+
+  private buildChores(): gsap.core.Timeline {
+    const d = LINE_SECONDS;
+    const p = this.pose;
+    return gsap.timeline({ paused: true })
+      .set(p, { fire: 0.9, water: 0, leaves: 0, places: 0.12, arm: 0.22, lean: 0.28 })
+      .to(p, { fire: 1, water: 0.05, leaves: 0, places: 0.1, arm: 0.3, lean: 0.62, duration: d, ease: 'sine.inOut' })
+      .to(p, { fire: 1, water: 0.08, leaves: 0, places: 0.1, arm: 0.36, lean: 0.84, duration: d, ease: 'sine.inOut' })
+      .to(p, { fire: 0.72, water: 0.72, leaves: 0, places: 0.1, arm: 0.88, lean: 0.46, duration: d, ease: 'sine.inOut' })
+      .to(p, { fire: 0.64, water: 0.94, leaves: 0.06, arm: 1, lean: 0.34, duration: d, ease: 'sine.inOut' })
+      .to(p, { fire: 0.58, water: 1, leaves: 0.12, arm: 0.96, lean: 0.28, duration: d, ease: 'sine.inOut' })
+      .to(p, { fire: 0.55, water: 0.32, leaves: 1, places: 0.18, arm: 0.78, lean: 0.16, duration: d, ease: 'sine.inOut' })
+      .to(p, { fire: 0.66, water: 0.12, leaves: 0.38, places: 1, arm: 0.6, lean: 0.12, duration: d, ease: 'sine.inOut' })
+      .to(p, { fire: 0.9, water: 0.02, leaves: 0.06, places: 0.16, arm: 0.24, lean: 0.3, duration: d, ease: 'sine.inOut' });
+  }
+
+  private heldItem(index: number): 'ember' | 'drop' | 'leaf' | null {
+    const { fire, water, leaves } = this.pose;
+    if (fire >= water && fire >= leaves && fire > 0.55 && (index === 2 || index === 3)) return 'ember';
+    if (water >= fire && water >= leaves && water > 0.5 && (index === 1 || index === 4)) return 'drop';
+    if (leaves >= fire && leaves >= water && leaves > 0.5 && (index === 0 || index === 5)) return 'leaf';
+    return null;
   }
 
   private currentIndex(): number {
@@ -830,12 +818,17 @@ export class EntChant {
 
     const code = this.codeState();
     ENTS.forEach((ent, index) => {
-      const arm = this.armFor(line.phase, progress, index);
-      const lean = this.leanFor(line.phase, progress, index);
+      const lag = this.reduce ? 0 : (1 - this.eased(progress, index)) * 0.16;
+      let arm = Math.max(0.08, this.pose.arm - lag);
+      let lean = this.pose.lean;
+      if (this.pose.fire > 0.8 && this.pose.water < 0.35 && (index === 2 || index === 3)) {
+        arm = Math.min(arm, 0.32);
+        lean += 0.2;
+      }
       const toward = ent.x < 0.5 ? 1 : -1;
       const x = ent.x * w + toward * lean * Math.min(42, w * 0.035);
       this.drawRootLine(ctx, x, ground, w / 2, line.phase, heal);
-      this.drawEnt(ctx, x, ground, h * ent.h, motion, ent.seed, arm, heal, line.phase);
+      this.drawEnt(ctx, x, ground, h * ent.h, motion, ent.seed, arm, heal, line.phase, ent.x < 0.5, index);
       if (index === 4) this.drawRegistration(ctx, x, ground - h * ent.h, code);
     });
 
@@ -846,8 +839,8 @@ export class EntChant {
     this.drawRitualRing(ctx, w, ground, line.phase, progress, heal);
     this.drawHeart(ctx, w / 2, ground, heal, motion, this.energy);
     this.drawMotes(ctx);
-    this.drawGround(ctx, w, h, ground, motion, heal, line.phase);
-    this.drawLocality(ctx, w, ground);
+    this.drawGround(ctx, w, h, ground, motion, heal, line.kicker);
+    this.drawLocality(ctx, w, ground, this.pose.places);
     this.drawHymn(ctx, w, h, line, this.reduce ? 1 : Math.min(1, 0.72 + progress / 0.2));
     this.drawProgress(ctx, w, h, this.currentIndex(), progress);
   }
@@ -988,14 +981,36 @@ export class EntChant {
     motion: number,
     energy: number,
   ): void {
-    const flame = Math.max(0, 1 - heal);
-    if (flame > 0.04) {
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, flame + 0.12);
-      this.drawFlame(ctx, x, ground, motion, energy * flame, Math.max(0.18, flame));
-      ctx.restore();
+    const hearth = 0.5 + this.pose.fire * 0.38;
+    this.drawFlame(ctx, x, ground, motion, energy * 0.35, hearth);
+    this.drawHearthGoods(ctx, x, ground);
+    if (heal > 0.12) this.drawSapling(ctx, x - 58, ground, 16 + heal * 72, motion, heal);
+  }
+
+  private drawHearthGoods(ctx: CanvasRenderingContext2D, x: number, ground: number): void {
+    ctx.save();
+    ctx.strokeStyle = '#6a4630';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x - 18, ground - 14);
+    ctx.lineTo(x + 16, ground - 18);
+    ctx.moveTo(x - 14, ground - 20);
+    ctx.lineTo(x + 18, ground - 12);
+    ctx.stroke();
+    const bowlX = x + 36;
+    ctx.strokeStyle = '#e2c092';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.ellipse(bowlX, ground - 16, 9, 3.6, 0, 0, Math.PI);
+    ctx.stroke();
+    if (this.pose.water > 0.08) {
+      ctx.fillStyle = `rgba(160, 214, 224, ${0.35 + this.pose.water * 0.55})`;
+      ctx.beginPath();
+      ctx.ellipse(bowlX, ground - 17, 6.5 * Math.min(1, this.pose.water), 2.1, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
-    if (heal > 0.04) this.drawSapling(ctx, x, ground, 28 + heal * 118, motion, heal);
+    ctx.restore();
   }
 
   private drawSapling(
@@ -1110,6 +1125,8 @@ export class EntChant {
     arm: number,
     heal: number,
     phase: RitualPhase,
+    innerRight: boolean,
+    index: number,
   ): void {
     const sway = Math.sin(motion * 0.45 + seed) * height * 0.02;
     const bob = phase === 'gather' ? Math.abs(Math.sin(motion * 0.9 + seed)) * 3 : 0;
@@ -1138,6 +1155,8 @@ export class EntChant {
     const right = this.drawBranch(ctx, trunk * 0.08, -height * 0.7, 1, height * 0.32, lift * 0.96, heal);
     this.drawLeaves(ctx, left.x, left.y, -1, heal);
     this.drawLeaves(ctx, right.x, right.y, 1, heal);
+    const held = innerRight ? right : left;
+    this.drawHeldItem(ctx, held.x, held.y, this.heldItem(index));
 
     const crown = mixHex('#3f4a32', '#173528', Math.min(1, heal * 1.2));
     ctx.fillStyle = heal > 0.55 ? '#1d6b3e' : crown;
@@ -1163,6 +1182,58 @@ export class EntChant {
     ctx.ellipse(-trunk * 0.18, eyeY, 2.1, 1.15, 0, 0, Math.PI * 2);
     ctx.ellipse(trunk * 0.32, eyeY, 2.1, 1.15, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalAlpha = 1;
+    this.drawHalo(ctx, -height - 18, motion, seed);
+    ctx.restore();
+  }
+
+  private drawHalo(ctx: CanvasRenderingContext2D, y: number, motion: number, seed: number): void {
+    const glow = 0.82 + Math.sin(motion * 1.1 + seed) * 0.12;
+    ctx.save();
+    ctx.translate(0, y);
+    const wash = ctx.createRadialGradient(0, 0, 1, 0, 0, 26);
+    wash.addColorStop(0, `rgba(243, 215, 130, ${0.42 * glow})`);
+    wash.addColorStop(1, 'rgba(243, 215, 130, 0)');
+    ctx.fillStyle = wash;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 26, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(243, 215, 130, ${0.95 * glow})`;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 15, 4.4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  private drawHeldItem(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    item: 'ember' | 'drop' | 'leaf' | null,
+  ): void {
+    if (!item) return;
+    ctx.save();
+    if (item === 'ember') {
+      ctx.fillStyle = '#f6d48a';
+      ctx.beginPath();
+      ctx.arc(x, y, 3.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e07a32';
+      ctx.beginPath();
+      ctx.arc(x, y + 1.2, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (item === 'drop') {
+      ctx.fillStyle = '#c5e7ef';
+      ctx.beginPath();
+      ctx.arc(x, y, 3.1, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#8fd48a';
+      ctx.beginPath();
+      ctx.ellipse(x, y, 6, 2.6, 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 
@@ -1303,7 +1374,7 @@ export class EntChant {
     ground: number,
     motion: number,
     heal: number,
-    phase: RitualPhase,
+    kicker: string,
   ): void {
     ctx.fillStyle = mixHex('#1a1410', '#0b1914', heal);
     ctx.fillRect(0, ground, w, h - ground);
@@ -1327,14 +1398,16 @@ export class EntChant {
     ctx.ellipse(w / 2, ground + 4, w * 0.3, 9 + Math.sin(motion) * 1.5, 0, Math.PI, 0);
     ctx.stroke();
     const label =
-      phase === 'saved' || heal > 0.92
+      kicker === 'THE KEEPING' && heal > 0.9
         ? 'THE JUNGLE STANDS'
-        : phase === 'pour' || phase === 'unfurl' || heal > 0.45
-          ? 'THE RETURNING'
-          : phase === 'raise'
-            ? 'THE RAISING'
-            : 'THE SCAR';
-    const labelY = phase === 'pour' || phase === 'unfurl' || phase === 'saved' ? ground - 10 : ground - 118;
+        : kicker === 'THE SAINTS' || kicker === 'THE FIRE'
+          ? 'THE FIRE'
+          : kicker === 'THE WATER' || kicker === 'THE POURING' || kicker === 'THE SONG'
+            ? 'THE WATER'
+            : kicker === 'THE LEAVES'
+              ? 'THE LEAVES'
+              : 'THE PLACES';
+    const labelY = kicker === 'THE SAINTS' || kicker === 'THE FIRE' ? ground - 118 : ground - 10;
     setLetterSpacing(ctx, '0.12em');
     ctx.font = '700 9px "DM Sans", "Segoe UI", sans-serif';
     ctx.fillStyle = heal > 0.92 ? '#d7e7c8' : '#cbbfa8';
@@ -1345,7 +1418,7 @@ export class EntChant {
     setLetterSpacing(ctx, '0px');
   }
 
-  private drawLocality(ctx: CanvasRenderingContext2D, w: number, ground: number): void {
+  private drawLocality(ctx: CanvasRenderingContext2D, w: number, ground: number, places: number): void {
     const marks: { x: number; label: string; kind: 'paw' | 'wing' | 'hoof' | 'root' }[] = [
       { x: w * 0.16, label: 'PAW', kind: 'paw' },
       { x: w * 0.3, label: 'WING', kind: 'wing' },
@@ -1357,11 +1430,12 @@ export class EntChant {
     setLetterSpacing(ctx, '0.12em');
     ctx.font = '700 8px "DM Sans", "Segoe UI", sans-serif';
     for (const mark of marks) {
-      ctx.strokeStyle = 'rgba(214, 176, 122, 0.7)';
-      ctx.fillStyle = 'rgba(214, 176, 122, 0.85)';
-      ctx.lineWidth = 1.2;
+      const lit = 0.45 + places * 0.55;
+      ctx.strokeStyle = `rgba(214, 176, 122, ${lit})`;
+      ctx.fillStyle = `rgba(214, 176, 122, ${0.55 + places * 0.4})`;
+      ctx.lineWidth = places > 0.55 ? 2 : 1.2;
       ctx.beginPath();
-      ctx.arc(mark.x, ground - 46, 11, 0, Math.PI * 2);
+      ctx.arc(mark.x, ground - 46, 11 + places * 2, 0, Math.PI * 2);
       ctx.stroke();
       this.drawMark(ctx, mark.x, ground - 46, mark.kind);
       ctx.fillStyle = '#9bb0a2';

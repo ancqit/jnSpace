@@ -13,7 +13,7 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
           <img src="assets/jearth-logo.svg" width="34" height="34" alt="" />
           <span>
             <strong>jEarth</strong>
-            <small>The rite</small>
+            <small>The saints</small>
           </span>
         </a>
         <button
@@ -29,17 +29,17 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
 
       <main>
         <p class="kicker">An entish song</p>
-        <h1 id="title">The rite that saves the jungle</h1>
+        <h1 id="title">The daily chores of the old saints</h1>
         <p class="lede">
-          The song is slow, because an entish song does not hurry. The ents name the burnt canopy, gather root by root,
-          raise their arms, and pour the water kept under the stone. The leaves open. The jungle stands.
+          The old ents are saints. The song is slow, and so is the day. They tend the fire, draw the water, open the
+          leaves, and set the other items: paw, wing, hoof, and root. The jungle stands because this work is kept.
         </p>
 
-        <ul class="scope" aria-label="The rite">
-          <li><span>Scar</span> The canopy was burnt. The ents name it.</li>
-          <li><span>Raising</span> Each arm lifts, and the rite waits for the last.</li>
-          <li><span>Pouring</span> Deep water climbs the bark into the scar.</li>
-          <li><span>Saving</span> The leaves return, and the ents remain to keep them.</li>
+        <ul class="scope" aria-label="The daily chores">
+          <li><span>Saints</span> The old ents are saints. A halo rests on each one.</li>
+          <li><span>Fire</span> Tending the hearth is the first chore of the day.</li>
+          <li><span>Water</span> They draw it and pour it for the roots.</li>
+          <li><span>Other items</span> The leaves, and the places of the animals.</li>
         </ul>
 
         <div class="transport">
@@ -48,7 +48,7 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
             <span>{{ primaryLabel }}</span>
           </button>
           @if (walking && audio === 'blocked' && canSound) {
-            <button class="button button--secondary" type="button" (click)="pauseRite()">Pause the rite</button>
+            <button class="button button--secondary" type="button" (click)="pauseRite()">Pause the chores</button>
           }
         </div>
         <p class="transport-note" [attr.data-audio]="audio" [attr.data-walking]="walking ? 'yes' : 'no'" aria-live="polite">
@@ -57,7 +57,7 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
         <p class="live-line"><span>{{ kicker }}</span> {{ sung }}</p>
         <p class="gloss">{{ line }}</p>
         <div class="meter" aria-hidden="true"><i [style.width.%]="meter"></i></div>
-        <p class="grove-note"><span>The jungle</span> {{ groveLabel }}</p>
+        <p class="grove-note"><span>The day</span> {{ groveLabel }}</p>
         <div class="meter grove" aria-hidden="true"><i [style.width.%]="grove"></i></div>
 
         <aside class="register" [attr.data-registered]="registered && audio === 'playing' ? 'yes' : 'no'" [attr.data-hearing]="hearing ? 'yes' : 'no'">
@@ -81,11 +81,11 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
 
         <section class="plain" id="junction" aria-label="What this call means">
           <article class="wide">
-            <h2>The rite</h2>
+            <h2>The chores</h2>
             <p>
-              The ents stand in the scar and do the rite together. They do not move as one hurry. One arm rises, then
-              the next, until the last is high. Water comes up through them. A young tree stands where the fire was,
-              the canopy closes, and the paw, the wing, the hoof, and the root take their places again.
+              The old ents are saints, so the fire is not a crisis. It is the hearth they tend every day, along with
+              the bowl of water, the leaves, and the places marked paw, wing, hoof, and root. They do one chore, then
+              the next, and the jungle stays standing.
             </p>
           </article>
           <article class="wide">
@@ -106,8 +106,8 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
           <article>
             <h2>The call</h2>
             <p>
-              The jungles were burnt in anger. The anger is Saruman's, the will that fells the green. The rite is the
-              answer: the ents stay, keep the place, and sing the canopy back.
+              The jungles were burnt in anger. The anger is Saruman's, the will that fells the green. The saints
+              answer by staying at the chores: the fire, the water, the leaves, and the places of the animals.
             </p>
           </article>
           <article class="wide">
@@ -190,21 +190,24 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   protected get note(): string {
-    if (!this.walking) return 'The rite is paused. Press play to walk it again.';
-    if (!this.canSound) return 'The rite is walking on the canvas. This browser cannot sound the song.';
-    if (this.audio === 'playing') return 'The rite is walking, and the entish song is sounding.';
+    if (!this.walking) return 'The chores are paused. Press play to walk the day again.';
+    if (!this.canSound) return 'The saints are at their chores on the canvas. This browser cannot sound the song.';
+    if (this.audio === 'playing') return 'The saints are at their chores, and the entish song is sounding.';
     if (this.audio === 'blocked') {
-      return 'The rite is walking on the canvas. This browser held the song back. Press play and it starts for real.';
+      return 'The saints are at their chores on the canvas. This browser held the song back. Press play and it starts for real.';
     }
-    return 'The rite is walking.';
+    return 'The saints are at their chores.';
   }
 
   protected get groveLabel(): string {
-    if (!this.walking) return 'The rite is paused.';
-    if (this.grove >= 92) return 'The jungle stands. The ents keep it.';
-    if (this.grove >= 45) return 'The deep water is entering the scar.';
-    if (this.grove >= 8) return 'The arms are rising. The green is beginning.';
-    return 'The jungle is burnt. The ents begin the rite.';
+    if (!this.walking) return 'The chores are paused.';
+    if (this.kicker === 'THE FIRE') return 'The saints are tending the fire.';
+    if (this.kicker === 'THE WATER' || this.kicker === 'THE POURING') return 'They are drawing and pouring the water.';
+    if (this.kicker === 'THE LEAVES') return 'They are opening the leaves.';
+    if (this.kicker === 'THE PLACES') return 'They are setting paw, wing, hoof, and root.';
+    if (this.kicker === 'THE KEEPING') return 'The chores are kept. The jungle stands.';
+    if (this.grove >= 92) return 'The jungle stands. The saints keep the day.';
+    return 'The old ents are saints. The day of chores begins at the fire.';
   }
 
   protected get codeNote(): string {
