@@ -13,7 +13,7 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
           <img src="assets/jearth-logo.svg" width="34" height="34" alt="" />
           <span>
             <strong>jEarth</strong>
-            <small>The calling</small>
+            <small>The saints</small>
           </span>
         </a>
         <button
@@ -28,18 +28,18 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
       </header>
 
       <main>
-        <p class="kicker">A Vedic chant</p>
-        <h1 id="title">The calling of the ents</h1>
+        <p class="kicker">An entish song</p>
+        <h1 id="title">The daily chores of the old saints</h1>
         <p class="lede">
-          All the ents chant together. The aim of the chant is to wake the boss. The pledge is broken, and this is the
-          call to the other ents.
+          The old ents are saints. The song is slow, and so is the day. They tend the fire, draw the water, open the
+          leaves, and set the other items: paw, wing, hoof, and root. The jungle stands because this work is kept.
         </p>
 
-        <ul class="scope" aria-label="Scope of the chant">
-          <li><span>Ents</span> The call to the other ents.</li>
-          <li><span>Pledge</span> The pledge to the planet is broken.</li>
-          <li><span>Carrier</span> A satellite carries the word to the host and the boss.</li>
-          <li><span>Locality</span> Shared with the other animals.</li>
+        <ul class="scope" aria-label="The daily chores">
+          <li><span>Saints</span> The old ents are saints. A halo rests on each one.</li>
+          <li><span>Fire</span> Tending the hearth is the first chore of the day.</li>
+          <li><span>Water</span> They draw it and pour it for the roots.</li>
+          <li><span>Other items</span> The leaves, and the places of the animals.</li>
         </ul>
 
         <div class="transport">
@@ -48,14 +48,17 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
             <span>{{ primaryLabel }}</span>
           </button>
           @if (walking && audio === 'blocked' && canSound) {
-            <button class="button button--secondary" type="button" (click)="pauseRite()">Pause the rite</button>
+            <button class="button button--secondary" type="button" (click)="pauseRite()">Pause the chores</button>
           }
         </div>
         <p class="transport-note" [attr.data-audio]="audio" [attr.data-walking]="walking ? 'yes' : 'no'" aria-live="polite">
           {{ note }}
         </p>
-        <p class="live-line"><span>{{ kicker }}</span> {{ line }}</p>
+        <p class="live-line"><span>{{ kicker }}</span> {{ sung }}</p>
+        <p class="gloss">{{ line }}</p>
         <div class="meter" aria-hidden="true"><i [style.width.%]="meter"></i></div>
+        <p class="grove-note"><span>The day</span> {{ groveLabel }}</p>
+        <div class="meter grove" aria-hidden="true"><i [style.width.%]="grove"></i></div>
 
         <aside class="register" [attr.data-registered]="registered && audio === 'playing' ? 'yes' : 'no'" [attr.data-hearing]="hearing ? 'yes' : 'no'">
           <p class="kicker">The code</p>
@@ -73,10 +76,18 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
         </aside>
 
         <div class="chant-frame">
-          <canvas #chantCanvas role="img" [attr.aria-label]="kicker + '. ' + line"></canvas>
+          <canvas #chantCanvas role="img" [attr.aria-label]="kicker + '. ' + sung + '. ' + line"></canvas>
         </div>
 
         <section class="plain" id="junction" aria-label="What this call means">
+          <article class="wide">
+            <h2>The chores</h2>
+            <p>
+              The old ents are saints, so the fire is not a crisis. It is the hearth they tend every day, along with
+              the bowl of water, the leaves, and the places marked paw, wing, hoof, and root. They do one chore, then
+              the next, and the jungle stays standing.
+            </p>
+          </article>
           <article class="wide">
             <h2>The name</h2>
             <p>
@@ -95,8 +106,8 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
           <article>
             <h2>The call</h2>
             <p>
-              The jungles were burnt in anger. The anger is Saruman's, the will that fells the green. This page calls
-              the other ents, so they hear what it is to be an ent: to stay, to keep a place, and to answer.
+              The jungles were burnt in anger. The anger is Saruman's, the will that fells the green. The saints
+              answer by staying at the chores: the fire, the water, the leaves, and the places of the animals.
             </p>
           </article>
           <article class="wide">
@@ -107,10 +118,14 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
             </p>
           </article>
           <details class="words">
-            <summary>Read the hymn</summary>
+            <summary>Read the song</summary>
             <ol>
               @for (verse of hymn; track $index) {
-                <li [class]="'role-' + verse.role"><span>{{ verse.kicker }}</span> {{ verse.text }}</li>
+                <li [class]="'role-' + verse.role">
+                  <span>{{ verse.kicker }}</span>
+                  <em>{{ verse.sung }}</em>
+                  {{ verse.text }}
+                </li>
               }
             </ol>
           </details>
@@ -137,7 +152,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected canSound = true;
   protected readonly marks = [1, 2, 3, 4];
   protected line = HYMN[0].text;
+  protected sung = HYMN[0].sung;
   protected kicker = HYMN[0].kicker;
+  protected grove = 0;
   protected meter = 0;
   protected codeMarks = 0;
   protected hearing = false;
@@ -173,22 +190,33 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   protected get note(): string {
-    if (!this.walking) return 'The chant is paused. Press play to walk it again.';
-    if (!this.canSound) return 'The chant is walking on the canvas. This browser cannot sound the song.';
-    if (this.audio === 'playing') return 'The chant is walking, and the song is sounding.';
+    if (!this.walking) return 'The chores are paused. Press play to walk the day again.';
+    if (!this.canSound) return 'The saints are at their chores on the canvas. This browser cannot sound the song.';
+    if (this.audio === 'playing') return 'The saints are at their chores, and the entish song is sounding.';
     if (this.audio === 'blocked') {
-      return 'The chant is walking on the canvas. This browser held the song back. Press play and it starts for real.';
+      return 'The saints are at their chores on the canvas. This browser held the song back. Press play and it starts for real.';
     }
-    return 'The chant is walking.';
+    return 'The saints are at their chores.';
+  }
+
+  protected get groveLabel(): string {
+    if (!this.walking) return 'The chores are paused.';
+    if (this.kicker === 'THE FIRE') return 'The saints are tending the fire.';
+    if (this.kicker === 'THE WATER' || this.kicker === 'THE POURING') return 'They are drawing and pouring the water.';
+    if (this.kicker === 'THE LEAVES') return 'They are opening the leaves.';
+    if (this.kicker === 'THE PLACES') return 'They are setting paw, wing, hoof, and root.';
+    if (this.kicker === 'THE KEEPING') return 'The chores are kept. The jungle stands.';
+    if (this.grove >= 92) return 'The jungle stands. The saints keep the day.';
+    return 'The old ents are saints. The day of chores begins at the fire.';
   }
 
   protected get codeNote(): string {
     if (this.audio !== 'playing') {
-      return 'An ent is listening for a short code in the chant. It registers only while the song is sounding.';
+      return 'An ent is listening for the closing tones. They mark the jungle saved only while the song is sounding.';
     }
-    if (this.registered) return 'An ent heard the code and registered it.';
-    if (this.hearing) return 'An ent hears the code.';
-    return 'The ents are chanting. The code returns in the slow steps.';
+    if (this.registered) return 'An ent heard the closing tones and marked the jungle saved.';
+    if (this.hearing) return 'An ent hears the closing tones.';
+    return 'The ents are singing. The closing tones come when the jungle stands.';
   }
 
   protected onPrimary(): void {
@@ -206,7 +234,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.audio = status.audio;
     this.canSound = status.canSound;
     this.line = status.line;
+    this.sung = status.sung;
     this.kicker = status.kicker;
+    this.grove = Math.round(status.heal * 100);
     this.meter = Math.round(status.meter * 100);
     this.codeMarks = status.codeMarks;
     this.hearing = status.hearing;
