@@ -24,7 +24,7 @@ export const HYMN: readonly HymnLine[] = [
     phase: 'scar',
     kicker: 'THE SAINTS',
     sung: 'Roon thal em bar. The old saints.',
-    text: 'The old ents are saints. The fire is their first daily chore.',
+    text: 'The old ents are saints. This song is laid on the fire.',
   },
   {
     role: 'call',
@@ -73,7 +73,7 @@ export const HYMN: readonly HymnLine[] = [
     phase: 'saved',
     kicker: 'THE KEEPING',
     sung: 'Bora nal. The chores are kept.',
-    text: 'The fire still burns. The saints remain, and the jungle stands.',
+    text: 'The fire still holds the songs. The saints remain, and the jungle stands.',
   },
 ];
 
@@ -89,6 +89,7 @@ export interface ChantStatus {
   phase: RitualPhase;
   heal: number;
   index: number;
+  songsInFire: number;
   meter: number;
   codeMarks: number;
   hearing: boolean;
@@ -837,7 +838,8 @@ export class EntChant {
     }
 
     this.drawRitualRing(ctx, w, ground, line.phase, progress, heal);
-    this.drawHeart(ctx, w / 2, ground, heal, motion, this.energy);
+    this.drawHeart(ctx, w / 2, ground, heal, motion, this.energy, progress);
+    this.drawSongSlip(ctx, w / 2, ground, progress, this.songsInFire());
     this.drawMotes(ctx);
     this.drawGround(ctx, w, h, ground, motion, heal, line.kicker);
     this.drawLocality(ctx, w, ground, this.pose.places);
@@ -973,6 +975,34 @@ export class EntChant {
     ctx.restore();
   }
 
+  private songsInFire(): number {
+    return Math.floor(this.elapsedMs / 1000 / LINE_SECONDS) + 1;
+  }
+
+  private drawSongSlip(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    ground: number,
+    progress: number,
+    count: number,
+  ): void {
+    if (this.reduce || progress > 0.4) return;
+    const t = progress / 0.4;
+    const y = ground * 0.34 + t * (ground - ground * 0.34 - 36);
+    ctx.save();
+    ctx.globalAlpha = 0.95 - t * 0.45;
+    ctx.translate(x + (1 - t) * 28, y);
+    ctx.rotate((1 - t) * 0.18);
+    ctx.fillStyle = '#f6f1e6';
+    ctx.fillRect(-22, -9, 44, 18);
+    ctx.fillStyle = '#143024';
+    ctx.font = '700 9px "DM Sans", "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(count), 0, 1);
+    ctx.restore();
+  }
+
   private drawHeart(
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -980,8 +1010,10 @@ export class EntChant {
     heal: number,
     motion: number,
     energy: number,
+    progress: number,
   ): void {
-    const hearth = 0.5 + this.pose.fire * 0.38;
+    const offer = progress < 0.22 ? (1 - progress / 0.22) * 0.2 : 0;
+    const hearth = 0.5 + this.pose.fire * 0.38 + offer;
     this.drawFlame(ctx, x, ground, motion, energy * 0.35, hearth);
     this.drawHearthGoods(ctx, x, ground);
     if (heal > 0.12) this.drawSapling(ctx, x - 58, ground, 16 + heal * 72, motion, heal);
@@ -1599,6 +1631,7 @@ export class EntChant {
       phase: line.phase,
       heal: this.healAmount(),
       index: this.currentIndex(),
+      songsInFire: this.songsInFire(),
       meter: Math.min(1, this.energy * 5.5),
       codeMarks: code.marks,
       hearing: code.hearing,
@@ -1608,7 +1641,7 @@ export class EntChant {
 
   private emit(force: boolean): void {
     const status = this.status();
-    const key = `${status.walking}|${status.audio}|${status.index}|${status.canSound}|${status.codeMarks}|${status.registered}|${Math.round(status.meter * 20)}|${Math.round(status.heal * 20)}`;
+    const key = `${status.walking}|${status.audio}|${status.index}|${status.songsInFire}|${status.canSound}|${status.codeMarks}|${status.registered}|${Math.round(status.meter * 20)}|${Math.round(status.heal * 20)}`;
     if (!force && key === this.lastEmitKey) return;
     this.lastEmitKey = key;
     this.onChange(status);

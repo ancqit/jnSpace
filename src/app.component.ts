@@ -13,9 +13,13 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
           <img src="assets/jearth-logo.svg" width="34" height="34" alt="" />
           <span>
             <strong>jEarth</strong>
-            <small>The saints</small>
+            <small>The hearth</small>
           </span>
         </a>
+        <p class="top-count" aria-live="polite">
+          <strong>{{ songsInFire }}</strong>
+          <span>in the fire</span>
+        </p>
         <button
           class="button button--secondary"
           type="button"
@@ -28,107 +32,106 @@ import { ChantAudio, ChantStatus, EntChant, HYMN } from './ent-chant';
       </header>
 
       <main>
-        <p class="kicker">An entish song</p>
-        <h1 id="title">The daily chores of the old saints</h1>
-        <p class="lede">
-          The old ents are saints. The song is slow, and so is the day. They tend the fire, draw the water, open the
-          leaves, and set the other items: paw, wing, hoof, and root. The jungle stands because this work is kept.
-        </p>
+        <section class="stage">
+          <div class="stage-copy">
+            <p class="kicker">Eight songs</p>
+            <h1 id="title">The fire keeps the songs</h1>
+            <p class="lede">
+              The old ents are saints. Eight songs are in the book. They lay each one on the fire, and when the day
+              comes round they lay them again. The number is how many songs the fire is holding.
+            </p>
+            <p class="count-num" [attr.aria-label]="songsInFire + ' songs laid on the fire'">{{ songsInFire }}</p>
+            <p class="count-label">songs laid on the fire</p>
+            <p class="live-line"><span>{{ kicker }}</span> {{ sung }}</p>
+            <p class="gloss">{{ line }}</p>
+            <div class="transport">
+              <button class="button button--primary" type="button" (click)="onPrimary()" [attr.aria-label]="primaryLabel + '. ' + note">
+                <lucide-icon [img]="showPause ? pauseIcon : playIcon" [size]="16"></lucide-icon>
+                <span>{{ primaryLabel }}</span>
+              </button>
+              @if (walking && audio === 'blocked' && canSound) {
+                <button class="button button--secondary" type="button" (click)="pauseRite()">Pause</button>
+              }
+            </div>
+            <p class="transport-note" [attr.data-audio]="audio" [attr.data-walking]="walking ? 'yes' : 'no'" aria-live="polite">
+              {{ note }}
+            </p>
+            <p class="grove-note">{{ groveLabel }}</p>
+            <div class="meter grove" aria-hidden="true"><i [style.width.%]="grove"></i></div>
+          </div>
+          <div class="chant-frame">
+            <canvas #chantCanvas role="img" [attr.aria-label]="kicker + '. ' + sung + '. ' + line + '. ' + songsInFire + ' songs in the fire.'"></canvas>
+          </div>
+        </section>
 
-        <ul class="scope" aria-label="The daily chores">
-          <li><span>Saints</span> The old ents are saints. A halo rests on each one.</li>
-          <li><span>Fire</span> Tending the hearth is the first chore of the day.</li>
-          <li><span>Water</span> They draw it and pour it for the roots.</li>
-          <li><span>Other items</span> The leaves, and the places of the animals.</li>
-        </ul>
-
-        <div class="transport">
-          <button class="button button--primary" type="button" (click)="onPrimary()" [attr.aria-label]="primaryLabel + '. ' + note">
-            <lucide-icon [img]="showPause ? pauseIcon : playIcon" [size]="16"></lucide-icon>
-            <span>{{ primaryLabel }}</span>
-          </button>
-          @if (walking && audio === 'blocked' && canSound) {
-            <button class="button button--secondary" type="button" (click)="pauseRite()">Pause the chores</button>
-          }
-        </div>
-        <p class="transport-note" [attr.data-audio]="audio" [attr.data-walking]="walking ? 'yes' : 'no'" aria-live="polite">
-          {{ note }}
-        </p>
-        <p class="live-line"><span>{{ kicker }}</span> {{ sung }}</p>
-        <p class="gloss">{{ line }}</p>
-        <div class="meter" aria-hidden="true"><i [style.width.%]="meter"></i></div>
-        <p class="grove-note"><span>The day</span> {{ groveLabel }}</p>
-        <div class="meter grove" aria-hidden="true"><i [style.width.%]="grove"></i></div>
-
-        <aside class="register" [attr.data-registered]="registered && audio === 'playing' ? 'yes' : 'no'" [attr.data-hearing]="hearing ? 'yes' : 'no'">
-          <p class="kicker">The code</p>
-          <p>{{ codeNote }}</p>
-          <ol class="marks" aria-hidden="true">
-            @for (mark of marks; track mark) {
-              <li [class.on]="mark <= codeMarks && audio === 'playing'"></li>
+        <section class="book" aria-label="The eight songs">
+          <div class="book-head">
+            <h2>The book</h2>
+            <p>Eight songs. The gold border is the one being laid on the fire now.</p>
+          </div>
+          <ol class="song-rail">
+            @for (verse of hymn; track $index) {
+              <li [class.now]="songIndex === $index" [class.laid]="songsInFire > $index">
+                <span class="song-n">{{ $index + 1 }}@if (timesLaid($index) > 1) { <span class="times"> ×{{ timesLaid($index) }}</span> }</span>
+                <span class="song-k">{{ verse.kicker }}</span>
+                <em>{{ verse.sung }}</em>
+              </li>
             }
           </ol>
-          @if (audio === 'playing' && registered) {
-            <p class="meaning">
-              the very people no one imagines anything of, who do the things no one can imagine.
-            </p>
-          }
-        </aside>
-
-        <div class="chant-frame">
-          <canvas #chantCanvas role="img" [attr.aria-label]="kicker + '. ' + sung + '. ' + line"></canvas>
-        </div>
+        </section>
 
         <section class="plain" id="junction" aria-label="What this call means">
           <article class="wide">
-            <h2>The chores</h2>
+            <h2>The fire</h2>
             <p>
-              The old ents are saints, so the fire is not a crisis. It is the hearth they tend every day, along with
-              the bowl of water, the leaves, and the places marked paw, wing, hoof, and root. They do one chore, then
-              the next, and the jungle stays standing.
+              The old ents are saints, so the fire is a hearth. Each song is a chore they place in it: the fire itself,
+              the water, the leaves, and the places marked paw, wing, hoof, and root. The count rises because they add
+              the songs again.
             </p>
           </article>
-          <article class="wide">
+          <article>
             <h2>The name</h2>
             <p>
-              Junction is the sun. The extra n is the chant sent into space. The two inner places with the sun are
-              Mercury and Venus. Sun, Mercury, Venus, .space is junctionn.space.
+              Junction is the sun. The extra n is the chant sent into space. Sun, Mercury, Venus, .space is
+              junctionn.space.
             </p>
           </article>
           <article>
             <h2>The pledge</h2>
             <p>
               Ents pledge their locality alongside the other animals at
-              <a href="https://junction.monster">junction.monster</a>. The pledge is to the planet. A satellite must
-              carry the message to the host and to the boss.
+              <a href="https://junction.monster">junction.monster</a>. A satellite carries the message to the host and
+              to the boss.
             </p>
           </article>
           <article>
             <h2>The call</h2>
             <p>
-              The jungles were burnt in anger. The anger is Saruman's, the will that fells the green. The saints
-              answer by staying at the chores: the fire, the water, the leaves, and the places of the animals.
+              The jungles were burnt in anger, Saruman's anger. The saints answer by staying at the fire and feeding it
+              the songs.
             </p>
           </article>
-          <article class="wide">
+          <article>
             <h2>The sleeper</h2>
             <p>
-              A spokesperson who slept a long time takes the call and the slogan. That voice is fuji kunal and rarrow.
-              The slogan they carry is the carrier's song: the wind is in the west, and my land is best.
+              Fuji kunal and rarrow slept a long time, then took the slogan: the wind is in the west, and my land is
+              best.
             </p>
           </article>
-          <details class="words">
-            <summary>Read the song</summary>
-            <ol>
-              @for (verse of hymn; track $index) {
-                <li [class]="'role-' + verse.role">
-                  <span>{{ verse.kicker }}</span>
-                  <em>{{ verse.sung }}</em>
-                  {{ verse.text }}
-                </li>
+          <aside class="register" [attr.data-registered]="registered && audio === 'playing' ? 'yes' : 'no'" [attr.data-hearing]="hearing ? 'yes' : 'no'">
+            <p class="kicker">The code</p>
+            <p>{{ codeNote }}</p>
+            <ol class="marks" aria-hidden="true">
+              @for (mark of marks; track mark) {
+                <li [class.on]="mark <= codeMarks && audio === 'playing'"></li>
               }
             </ol>
-          </details>
+            @if (audio === 'playing' && registered) {
+              <p class="meaning">
+                the very people no one imagines anything of, who do the things no one can imagine.
+              </p>
+            }
+          </aside>
         </section>
       </main>
 
@@ -155,6 +158,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected sung = HYMN[0].sung;
   protected kicker = HYMN[0].kicker;
   protected grove = 0;
+  protected songIndex = 0;
+  protected songsInFire = 1;
   protected meter = 0;
   protected codeMarks = 0;
   protected hearing = false;
@@ -196,7 +201,12 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     if (this.audio === 'blocked') {
       return 'The saints are at their chores on the canvas. This browser held the song back. Press play and it starts for real.';
     }
-    return 'The saints are at their chores.';
+    return 'The saints are laying a song on the fire.';
+  }
+
+  protected timesLaid(index: number): number {
+    if (this.songsInFire <= index) return 0;
+    return Math.floor((this.songsInFire - 1 - index) / this.hymn.length) + 1;
   }
 
   protected get groveLabel(): string {
@@ -205,6 +215,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     if (this.kicker === 'THE WATER' || this.kicker === 'THE POURING') return 'They are drawing and pouring the water.';
     if (this.kicker === 'THE LEAVES') return 'They are opening the leaves.';
     if (this.kicker === 'THE PLACES') return 'They are setting paw, wing, hoof, and root.';
+    if (this.kicker === 'THE SONG') return 'They are singing this one into the fire.';
     if (this.kicker === 'THE KEEPING') return 'The chores are kept. The jungle stands.';
     if (this.grove >= 92) return 'The jungle stands. The saints keep the day.';
     return 'The old ents are saints. The day of chores begins at the fire.';
@@ -237,6 +248,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.sung = status.sung;
     this.kicker = status.kicker;
     this.grove = Math.round(status.heal * 100);
+    this.songIndex = status.index;
+    this.songsInFire = status.songsInFire;
     this.meter = Math.round(status.meter * 100);
     this.codeMarks = status.codeMarks;
     this.hearing = status.hearing;
